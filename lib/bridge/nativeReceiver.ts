@@ -12,7 +12,7 @@ export function onNative(action: string, cb: Listener): () => void {
 
 export function initNativeReceiver(): void {
     if (typeof window === 'undefined') return
-    window.__nativeCallback = (json: string) => {
+    window.appJsInterface = (json: string) => {
         try {
             const { action, params } = JSON.parse(json)
             listeners.get(action)?.forEach((cb) => cb(params ?? {}))

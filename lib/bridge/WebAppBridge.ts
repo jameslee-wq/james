@@ -21,7 +21,7 @@ declare global {
             messageHandlers: { bridge: { postMessage: (message: string) => void } }
         }
         // 네이티브 → 웹 콜백 진입점
-        __nativeCallback?: (json: string) => void
+        appJsInterface?: (json: string) => void
     }
 }
 
