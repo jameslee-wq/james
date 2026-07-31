@@ -19,7 +19,7 @@ export default function Home() {
       window.android = { bridge: (m: string) => push('[MOCK] ' + m) }
     }
     const off = onNative('getPushStatus', (p) =>
-      push('[앱으로부터 수신] getPushStatus count=' + p.newCnt)
+      push('[앱 수신] getPushStatus count=' + p.newCnt)
     )
     return off
   }, [])
@@ -36,8 +36,7 @@ export default function Home() {
       <pre style={{ background: '#111', color: '#0f0', padding: 12, minHeight: 200 }}>
         {log.join('\n')}
       </pre>
-      <button onClick={() => bridge.getPushStatus()}>알림 확인</button>
-      <p>안읽은 알림: {pushStatus?.newCnt ?? '-'}</p>
+
     </main>
   )
 }
