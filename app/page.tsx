@@ -6,7 +6,7 @@ import { useNativeEvent } from '@/hooks/useNativeEvent'
 
 
 interface PushStatus {
-  count: number
+  newCnt: number
 }
 export default function Home() {
   const [log, setLog] = useState<string[]>([])
@@ -19,7 +19,7 @@ export default function Home() {
       window.android = { bridge: (m: string) => push('[MOCK] ' + m) }
     }
     const off = onNative('getPushStatus', (p) =>
-      push('[NATIVE] getPushStatus count=' + p.count)
+      push('[앱으로부터 수신] getPushStatus count=' + p.newCnt)
     )
     return off
   }, [])
@@ -37,7 +37,7 @@ export default function Home() {
         {log.join('\n')}
       </pre>
       <button onClick={() => bridge.getPushStatus()}>알림 확인</button>
-      <p>안읽은 알림: {pushStatus?.count ?? '-'}</p>
+      <p>안읽은 알림: {pushStatus?.newCnt ?? '-'}</p>
     </main>
   )
 }
