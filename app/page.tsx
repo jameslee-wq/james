@@ -2,11 +2,16 @@
 import { useEffect, useState } from 'react'
 import { bridge } from '@/lib/bridge/WebAppBridge'
 import { initNativeReceiver, onNative } from '@/lib/bridge/nativeReceiver'
+import { useNativeEvent } from '@/hooks/useNativeEvent'
 
+
+interface PushStatus {
+  count: number
+}
 export default function Home() {
   const [log, setLog] = useState<string[]>([])
   const push = (s: string) => setLog((l) => [s, ...l].slice(0, 20))
-
+  const pushStatus = useNativeEvent<PushStatus>('getPushStatus')
   useEffect(() => {
     initNativeReceiver()
     // 브라우저 단독 테스트용 mock (앱 없이도 흐름 확인)
@@ -31,6 +36,8 @@ export default function Home() {
       <pre style={{ background: '#111', color: '#0f0', padding: 12, minHeight: 200 }}>
         {log.join('\n')}
       </pre>
+      <button onClick={() => bridge.getPushStatus()}>알림 확인</button>
+      <p>안읽은 알림: {pushStatus?.count ?? '-'}</p>
     </main>
   )
 }
