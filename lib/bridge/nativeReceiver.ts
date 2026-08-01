@@ -1,27 +1,81 @@
 // lib/bridge/nativeReceiver.ts
+// APP → WEB : appJsInterface(json) 수신 및 액션별 분배
 'use client'
 
-type Listener = (params: Record<string, unknown>) => void
-const listeners = new Map<string, Set<Listener>>()
+import type { AppToWebAction, AppToWebPayloadMap } from '@/lib/bridge/WebAppBridge'
 
-export function onNative(action: string, cb: Listener): () => void {
+type Listener<A extends AppToWebAction> = (params: AppToWebPayloadMap[A]) => void
+type AnyListener = (params: Record<string, unknown>) => void
+
+const listeners = new Map<string, Set<AnyListener>>()
+
+/**
+ * APP → WEB 액션 구독. 반환된 함수를 호출하면 해제된다.
+ * 8.0 goBack, 13.0 pushStatus 는 어떤 페이지에서든 접근 가능해야 하므로
+ * 전역 레이아웃에서 구독하는 것을 권장한다.
+ */
+export function onNative<A extends AppToWebAction>(
+    action: A,
+    cb: Listener<A>,
+): () => void {
     if (!listeners.has(action)) listeners.set(action, new Set())
-    listeners.get(action)!.add(cb)
-    return () => listeners.get(action)?.delete(cb)
+    const set = listeners.get(action)!
+    set.add(cb as AnyListener)
+    return () => {
+        set.delete(cb as AnyListener)
+    }
 }
 
-// lib/bridge/nativeReceiver.ts
-export function initNativeReceiver(): void {
-    if (typeof window === 'undefined') return
-    window.appJsInterface = (raw: string) => {
-        console.log('[bridge] 수신 원본:', raw)   // ← 우선 이거부터 확인
+/** 1회성 구독 */
+export function onceNative<A extends AppToWebAction>(
+    action: A,
+    cb: Listener<A>,
+): () => void {
+    const off = onNative(action, ((params) => {
+        off()
+        cb(params)
+    }) as Listener<A>)
+    return off
+}
+
+/** 수신 메시지를 구독자에게 전달. 브라우저 단독 테스트에서 직접 호출 가능 */
+export function dispatchNative(action: string, params: Record<string, unknown>): void {
+    const set = listeners.get(action)
+    if (!set || set.size === 0) {
+        console.warn('[bridge] 구독자 없음:', action, params)
+        return
+    }
+    set.forEach((cb) => {
         try {
-            const { action, params } = JSON.parse(raw)
-            console.log('[bridge] 파싱 결과:', action, params)   // ← 이것도
-            listeners.get(action)?.forEach((cb) => cb(params ?? {}))
+            cb(params)
+        } catch (e) {
+            console.warn('[bridge] listener error', action, e)
+        }
+    })
+}
+
+let initialized = false
+
+/** window.appJsInterface 등록. 앱 진입 시 1회 호출 */
+export function initNativeReceiver(): void {
+    if (typeof window === 'undefined' || initialized) return
+    initialized = true
+
+    window.appJsInterface = (raw: string) => {
+        try {
+            // 앱에서 문자열이 아닌 객체를 그대로 넘기는 경우까지 방어
+            const payload: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw
+            const { action, params } = (payload ?? {}) as {
+                action?: string
+                params?: Record<string, unknown>
+            }
+            if (!action) {
+                console.warn('[bridge] action 없음', raw)
+                return
+            }
+            dispatchNative(action, params ?? {})
         } catch (e) {
             console.warn('[bridge] JSON 파싱 실패', raw, e)
         }
     }
 }
-
