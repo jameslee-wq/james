@@ -6,7 +6,7 @@ import {
   getAppAgent,
   type RedButtonAgent,
 } from '@/lib/bridge/WebAppBridge'
-import { initNativeReceiver } from '@/lib/bridge/nativeReceiver'
+import { initNativeReceiver, onNativeMessage } from '@/lib/bridge/nativeReceiver'
 import { useAndroidBackButton, useNativeListener } from '@/hooks/useNativeEvent'
 
 // UserAgent 는 런타임 내내 변하지 않으므로 1회만 파싱해 캐싱한다.
@@ -24,8 +24,6 @@ export default function Home() {
   // SSR 에서는 null, 클라이언트 마운트 후 실제 Agent 로 갱신 (하이드레이션 안전)
   const agent = useSyncExternalStore(subscribeAgent, getAgentSnapshot, () => null)
 
-  const write = (line: string) => setLog((l) => [line, ...l].slice(0, 50))
-
   useEffect(() => {
     initNativeReceiver()
 
@@ -40,52 +38,26 @@ export default function Home() {
     }
   }, [])
 
-  // 2.0 로그아웃 (APP → WEB)
-  useNativeListener('logout', () => write('[앱 수신] logout'))
-
-  // 3.0 소셜 로그인 결과
-  useNativeListener('loginResult', (p) =>
-    write(
-      `[앱 수신] loginResult ${p.result} / ${p.snsChannel} / snsId=${p.snsId}` +
-      ` / ci=${p.ci} / email=${p.email} / fnType=${p.fnType}`,
-    ),
+  // APP → WEB 으로 들어온 모든 메시지를 화면 로그에 남긴다.
+  // (구독자 없는 액션·파싱 실패까지 포함되므로 console 만 보지 않아도 된다)
+  useEffect(
+    () =>
+      onNativeMessage(({ action, raw, handled }) => {
+        setLog((l) =>
+          [
+            `[앱 수신${handled ? '' : ' · 미처리'}] ${action} ${prettify(raw)}`,
+            ...l,
+          ].slice(0, 50),
+        )
+      }),
+    [],
   )
 
-  // 4.0 스캔 결과
-  useNativeListener('scanResult', (p) => write(`[앱 수신] scanResult value=${p.value}`))
-
-  // 6.0 연락처 결과 (1명이라도 Array)
-  useNativeListener('contactResult', (p) =>
-    write(
-      `[앱 수신] contactResult ${p.list.length}건 ` +
-      p.list.map((c) => `${c.name}(${c.phone})`).join(', '),
-    ),
-  )
-
-  // 11.0 위치 결과 (거부/실패 시 0,0)
-  useNativeListener('locationResult', (p) =>
-    write(`[앱 수신] locationResult ${p.latitude}, ${p.longitude}`),
-  )
-
-  // 13.0 알림함 N 표시
-  useNativeListener('pushStatus', (p) => {
-    setPushNew(p.new)
-    write(`[앱 수신] pushStatus new=${p.new}`)
-  })
-
-  // 14.0 권한체크 결과
-  useNativeListener('permissionResult', (p) =>
-    write(`[앱 수신] permissionResult ${p.result}`),
-  )
-
-  // 15.0 마케팅 동의 결과
-  useNativeListener('adPushAgreeResult', (p) =>
-    write(`[앱 수신] adPushAgreeResult ${p.result}`),
-  )
+  // 13.0 알림함 N 표시 갱신
+  useNativeListener('pushStatus', (p) => setPushNew(p.new))
 
   // 8.0 안드로이드 백 버튼: 닫을 레이어가 없으면 앱으로 goBack 재호출
   useAndroidBackButton(() => {
-    write('[앱 수신] goBack')
     if (window.history.length > 1) {
       window.history.back()
       return true // 웹에서 처리함
@@ -162,6 +134,15 @@ export default function Home() {
       </section>
     </main>
   )
+}
+
+/** 수신 원본 JSON 을 한 줄 로그에 보기 좋게 정리 */
+function prettify(raw: string): string {
+  try {
+    return JSON.stringify(JSON.parse(raw))
+  } catch {
+    return raw
+  }
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
