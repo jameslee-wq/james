@@ -8,10 +8,13 @@ import { useNativeEvent } from '@/hooks/useNativeEvent'
 interface PushStatus {
   newCnt: number
 }
+
 export default function Home() {
   const [log, setLog] = useState<string[]>([])
   const push = (s: string) => setLog((l) => [s, ...l].slice(0, 20))
+
   const pushStatus = useNativeEvent<PushStatus>('getPushStatus')
+
   useEffect(() => {
     initNativeReceiver()
     // 브라우저 단독 테스트용 mock (앱 없이도 흐름 확인)
@@ -26,13 +29,14 @@ export default function Home() {
 
   return (
     <main style={{ padding: 24, fontFamily: 'sans-serif' }}>
-      <h1>Bridge Test</h1>
+      <h1>Web-App Bridge Test</h1>
+
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         <button onClick={() => bridge.call('15771577')}>call</button>
         <button onClick={() => bridge.getPushStatus()}>getPushStatus</button>
-        <button onClick={() => bridge.progress(true)}>progress on</button>
         <button onClick={() => bridge.goBack()}>goBack</button>
       </div>
+
       <pre style={{ background: '#111', color: '#0f0', padding: 12, minHeight: 200 }}>
         {log.join('\n')}
       </pre>
