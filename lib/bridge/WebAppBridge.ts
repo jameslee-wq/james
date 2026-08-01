@@ -211,13 +211,63 @@ function post(message: string): void {
     }
 }
 
-/** WEB → APP 전송. 전송한 JSON 문자열을 반환(로깅/테스트용) */
+/* ----------------------- 송신 인터셉터 (확인창) ----------------------- */
+
+/** Bridge 로 나갈 메시지 */
+export interface OutgoingBridge {
+    kind: 'bridge'
+    action: WebToAppAction
+    params: Record<string, unknown>
+    /** 실제로 전송될 JSON 문자열 */
+    message: string
+}
+
+/** Scheme 으로 나갈 요청 (16.0) */
+export interface OutgoingScheme {
+    kind: 'scheme'
+    type: string
+    url?: string
+    /** 실제로 이동할 Full Scheme URL */
+    target: string
+}
+
+export type OutgoingRequest = OutgoingBridge | OutgoingScheme
+
+/** `false` 를 반환하면 전송을 보류한다(확인창에서 사용) */
+export type OutgoingInterceptor = (req: OutgoingRequest) => boolean | void
+
+let interceptor: OutgoingInterceptor | null = null
+
+/** 송신 직전 가로채기. null 을 넘기면 해제 */
+export function setOutgoingInterceptor(fn: OutgoingInterceptor | null): void {
+    interceptor = fn
+}
+
+/** 인터셉터를 우회해 실제로 앱에 전달한다(확인창의 "전송" 처리용) */
+export function dispatchOutgoing(req: OutgoingRequest): void {
+    if (req.kind === 'bridge') {
+        post(req.message)
+        return
+    }
+    if (typeof window !== 'undefined') window.location.href = req.target
+}
+
+function request(req: OutgoingRequest): boolean {
+    if (interceptor && interceptor(req) === false) return false
+    dispatchOutgoing(req)
+    return true
+}
+
+/**
+ * WEB → APP 전송. 전송(예정)한 JSON 문자열을 반환(로깅/테스트용).
+ * 인터셉터가 보류시키면 전송하지 않고 문자열만 반환한다.
+ */
 export function send(
     action: WebToAppAction,
     params: Record<string, unknown> = {},
 ): string {
     const message = JSON.stringify({ action, params } satisfies BridgeMessage)
-    post(message)
+    request({ kind: 'bridge', action, params, message })
     return message
 }
 
@@ -242,7 +292,7 @@ export function openScheme(type: string, url?: string): string {
         `package=${ANDROID_PACKAGE};end`
         : `${IOS_SCHEME}://${query}`
 
-    if (typeof window !== 'undefined') window.location.href = target
+    request({ kind: 'scheme', type, url, target })
     return target
 }
 
