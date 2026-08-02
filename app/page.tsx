@@ -161,15 +161,13 @@ export default function Home() {
         <Btn onClick={() => bridge.login('naver', 'login')}>login(naver)</Btn>
         <Btn onClick={() => bridge.login('kakao', 'login')}>login(kakao)</Btn>
         <Btn onClick={() => bridge.login('apple', 'login')}>login(apple)</Btn>
-        <Btn onClick={() => bridge.login('naver', 'info')}>login(info)</Btn>
-        <Btn onClick={() => bridge.login('naver', 'withdrawal')}>login(withdrawal)</Btn>
       </Section>
 
       <Section title="4.0 ~ 7.0 디바이스 기능">
         <Btn onClick={() => bridge.openScanner()}>openScanner</Btn>
         <Btn onClick={() => bridge.openPushList()}>openPushList</Btn>
         <Btn onClick={() => bridge.openContact(2)}>openContact(2)</Btn>
-        <Btn onClick={() => bridge.share('공유할 메세지', 'https://www.bonif.co.kr')}>
+        <Btn onClick={() => bridge.share('공유할 메세지\n공유할 메세지공유할 메세지\n공유할 메세지', 'https://www.redbutton.com')}>
           share
         </Btn>
       </Section>
@@ -179,8 +177,6 @@ export default function Home() {
         <Btn onClick={() => bridge.openBrowser('https://www.bonif.co.kr')}>
           openBrowser
         </Btn>
-        <Btn onClick={() => bridge.progress('on', 'on')}>progress on</Btn>
-        <Btn onClick={() => bridge.progress('off', 'off')}>progress off</Btn>
         <Btn onClick={() => bridge.location()}>location</Btn>
         <Btn onClick={() => bridge.closeOpenWindow()}>closeOpenWindow</Btn>
       </Section>
